@@ -51,25 +51,37 @@ class Dria:
 
     def bootstrap(self):
         for node in self.nodes:
+            node.set_seed()
             augmentation = node.generate(augmentation_prompt + self.base_instruction, self.max_steps)
             self.data.append(augmentation) # store generated data
             # label = node.generate(fill_prompt(self.base_instruction, generation), self.max_steps)
             self.controller.add_concept(augmentation)
 
     def guided_generation(self):
-        negative_instructions = self.controller.select(k=5)
+        negative_instructions = self.controller.select()
+        print("selected negatives ", negative_instructions)
 
         for node in tqdm(self.nodes, desc="Guided generation"):
-            guidance_scale = 2.0; iterations = 0;
+            node.set_seed()
+            guidance_scale = 1.0; iterations = 0;
 
             augmentation = node.generate_with_guidance(augmentation_prompt + self.base_instruction, negative_instructions, 150, guidance_scale, 1.0, 0.9)
             #label = node.generate(fill_prompt(self.base_instruction, generation), self.max_steps)
+            print("first augmentation ", augmentation)
+            print("\n")
 
             while self.controller.similar(augmentation) and iterations < 5:
-                augmentation = node.generate_with_guidance(augmentation_prompt + self.base_instruction, negative_instructions, 150, guidance_scale + 0.5, 1.0, 0.9)
+                print("retry")
+                guidance_scale += 0.5
+                augmentation = node.generate_with_guidance(augmentation_prompt + self.base_instruction, negative_instructions, 150, guidance_scale, 1.0, 0.9)
                 #label = node.generate(fill_prompt(self.base_instruction, generation), self.max_steps)
+                print("secondary ", augmentation)
+                print("\n")
                 iterations += 1
+                
             
+            print("***"*20)
+            print("\n")
             self.data.append(augmentation) # store generated data
             self.controller.add_concept(augmentation)
     

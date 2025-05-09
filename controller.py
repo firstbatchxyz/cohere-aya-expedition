@@ -66,7 +66,10 @@ class VectorDB:
     def search(self, query, k=5):
         q = self._qvec(query)
         sims = q @ self.vecs.T
-        idx = np.argpartition(-sims, k)[:k]
+        print("*** ", sims.shape, sims)
+        n = len(sims)
+        k = min(k, n)
+        idx = np.argpartition(-sims, k-1)[:k]
         idx = idx[np.argsort(-sims[idx])]
         return [(self.ids[i], self.texts[i], float(sims[i])) for i in idx]
 
@@ -74,31 +77,33 @@ class Controller:
     """Minimal wrapper for controller component of the network"""
     def __init__(self):
         self.vdb = VectorDB(embedder=E5Embedder())
-        self.threshold = 0.8
-    def add_concept(self, concept): self.vdb.add_docs(concept)
+        self.threshold = 0.82
+    def add_concept(self, concept): self.vdb.add_docs([concept])
 
     def similar(self, concept): 
         """ Check if there exists similar concept beyond threshold """
         results = self.vdb.search(concept)
+        print("--"*10)
+        print(results)
+        print("--"*10)
         if not results: return False
-        (_, _, similarity) = results[0]
-        if similarity > self.threshold:
-            return True
-        return False
+        max_sim =  max([similarity for (_, _, similarity) in results])
+        if max_sim < self.threshold:
+                return False
+        return True
 
-    def select(self, k, knn=10):
-        V = self.vdb.vecs            # (N, d)
-        if V.size == 0: return []
+    def select(self, k=5, knn=10):
+        V = self.vdb.vecs
+        if V.shape[0] == 0:
+            return []
 
-        # pairwise dot‑product → cosine sim
-        sims = V @ V.T              # (N, N)
-        np.fill_diagonal(sims, -1)  # ignore self
+        sims = V @ V.T
+        np.fill_diagonal(sims, -1)
 
-        # collect k‑NN distances (cosine → distance = 1‑sim)
-        D = 1 - np.sort(sims, axis=1)[:, -knn:]   # largest sims = nearest
-        density = 1 / (D.mean(1) + 1e-9)          # higher = denser
+        D = 1 - np.sort(sims, axis=1)[:, -min(knn, V.shape[0]-1):]
+        density = 1 / (D.mean(1) + 1e-9)
 
-        top = np.argpartition(-density, k)[:k]
+        m = min(k, len(density))          # ≤ available points
+        top = np.argpartition(-density, m-1)[:m]
         top = top[np.argsort(-density[top])]
-
         return [self.vdb.texts[i] for i in top]
