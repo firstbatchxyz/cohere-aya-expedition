@@ -1,8 +1,6 @@
 import torch, torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModel
 import numpy as np
-import faiss
-from sklearn.cluster import DBSCAN
 
 
 class E5Embedder:
@@ -109,3 +107,6 @@ class Controller:
         top = np.argpartition(-density, m-1)[:m]
         top = top[np.argsort(-density[top])]
         return [self.vdb.texts[i] for i in top]
+    
+    def embed_texts(self, texts):
+        return self.vdb.e.encode(texts)

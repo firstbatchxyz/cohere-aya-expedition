@@ -5,6 +5,8 @@ from node import LLMNode
 from controller import Controller
 from tqdm import tqdm
 
+from metrics import compute_diversity
+
 classify_prompt = """
 You are a domain classifier.  
 Task: From a (Base instruction) and its (Output), return the most specific sub-domain / concept that describes the Output relative to the Base, using ≤ 5 words.
@@ -86,6 +88,30 @@ class Dria:
             print("\n")
             self.data.append(augmentation) # store generated data
             self.controller.add_concept(augmentation)
+            
+    def generate_regular(self):
+        generations = []
+        for node in self.nodes:
+            node.set_seed()
+            generation = node.generate(self.base_instruction, self.max_steps)
+            generations.append(generation) # store generated data
+
+        return generations
+
+    def generate_based_on_guided(self):
+        self.guided_generation()
+
+        generations = []
+        instructions = self.data
+        
+        # Disperse each instruction into a node in self.nodes
+        for i, instruction in enumerate(instructions):
+            node = self.nodes[i]
+            node.set_seed()
+            generation = node.generate(instruction, self.max_steps)
+            generations.append(generation) # store generated data
+
+        return generations
     
     def run(self):
         print("Started running")
@@ -97,7 +123,14 @@ class Dria:
 if __name__ == "__main__":
     base_instruction =  "Write a short poem"
     dria = Dria(num_nodes=5, base_instruction=base_instruction)
-    dria.run()
+    regular_generations = dria.generate_regular()
+    guided_generations = dria.generate_based_on_guided()
 
-    for instruction in dria.data:
-        print(instruction)
+    regular_embeddings = dria.controller.embed_texts(regular_generations)
+    guided_embeddings = dria.controller.embed_texts(guided_generations)
+
+    regular_metrics = compute_diversity(regular_embeddings)
+    guided_metrics = compute_diversity(guided_embeddings)
+
+    print(f"Regular metrics: {regular_metrics}")
+    print(f"Guided metrics: {guided_metrics}")
