@@ -66,7 +66,6 @@ class VectorDB:
     def search(self, query, k=5):
         q = self._qvec(query)
         sims = q @ self.vecs.T
-        print("*** ", sims.shape, sims)
         n = len(sims)
         k = min(k, n)
         idx = np.argpartition(-sims, k-1)[:k]
@@ -87,9 +86,10 @@ class Controller:
         print(results)
         print("--"*10)
         if not results: return False
-        mean_sim =  np.mean([similarity for (_, _, similarity) in results])
-        max_sim = max([similarity for (_, _, similarity) in results])
-        print("---*** ", mean_sim)
+        sims = [similarity for (_, _, similarity) in results]
+        mean_sim =  np.mean(sims)
+        max_sim = max(sims)
+        print("---** mean: ", mean_sim, " max: ", max_sim, " sims: ", sims)
         if max_sim < self.threshold:
                 return False
         return True
