@@ -1,10 +1,9 @@
 import torch, torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from typing import List
-import time
-
 from node import LLMNode
 from controller import Controller
+from tqdm import tqdm
 
 classify_prompt = """
 You are a domain classifier.  
@@ -24,12 +23,19 @@ Output: {OUTPUT}
 Category:
 """
 
+augmentation_prompt = """
+You are an expert in instruction augmentation. Each turn, you are given a base instruction and you respond in an augmented version of that instruction that steers the prompt in a new semantic direction. 
+You should:
+- Only respond with the augmented instruction, nothing else
+- Make sure the new prompt is different enough
+
+    """
 
 def fill_prompt(base, generation):
     return classify_prompt.format(BASE=base, OUTPUT=generation)
 
 class Dria:
-    def __init__(self, num_nodes, base_instruction, base_model="Qwen/Qwen3-4B"):
+    def __init__(self, num_nodes, base_instruction, base_model="microsoft/Phi-4-mini-instruct"):
         self.tokenizer = AutoTokenizer.from_pretrained(base_model)
         self.model = AutoModelForCausalLM.from_pretrained(base_model, torch_dtype="auto", device_map="auto")
         self.model.eval()
@@ -45,35 +51,39 @@ class Dria:
 
     def bootstrap(self):
         for node in self.nodes:
-            generation = node.generate(self.base_instruction, self.max_steps)
-            self.data.append(generation) # store generated data
-            label = node.generate(fill_prompt(self.base_instruction, generation), self.max_steps)
-            self.controller.add_concept(label)
+            augmentation = node.generate(augmentation_prompt + self.base_instruction, self.max_steps)
+            self.data.append(augmentation) # store generated data
+            # label = node.generate(fill_prompt(self.base_instruction, generation), self.max_steps)
+            self.controller.add_concept(augmentation)
 
     def guided_generation(self):
-        negatives = self.controller.select(k=10)
-        for node in self.nodes:
-            guidance_scale = 2.0; iterations = 0;
-            generation = node.generate_with_guidance(self.base_instruction, negatives, 150, guidance_scale, 1.0, 0.9)
-            label = node.generate(fill_prompt(self.base_instruction, generation), self.max_steps)
+        negative_instructions = self.controller.select(k=5)
 
-            while self.controller.similar(label) and iterations < 5:
-                generation = node.generate_with_guidance(self.base_instruction, negatives, 150, guidance_scale + 0.5, 1.0, 0.9)
-                label = node.generate(fill_prompt(self.base_instruction, generation), self.max_steps)
+        for node in tqdm(self.nodes, desc="Guided generation"):
+            guidance_scale = 2.0; iterations = 0;
+
+            augmentation = node.generate_with_guidance(augmentation_prompt + self.base_instruction, negative_instructions, 150, guidance_scale, 1.0, 0.9)
+            #label = node.generate(fill_prompt(self.base_instruction, generation), self.max_steps)
+
+            while self.controller.similar(augmentation) and iterations < 5:
+                augmentation = node.generate_with_guidance(augmentation_prompt + self.base_instruction, negative_instructions, 150, guidance_scale + 0.5, 1.0, 0.9)
+                #label = node.generate(fill_prompt(self.base_instruction, generation), self.max_steps)
                 iterations += 1
             
-            self.data.append(generation) # store generated data
-            self.controller.add_concept(label)
+            self.data.append(augmentation) # store generated data
+            self.controller.add_concept(augmentation)
+    
+    def run(self):
+        print("Started running")
+        self.bootstrap()
+        print("Bootstrap done")
+        for _ in range(1):
+            self.guided_generation()
 
 if __name__ == "__main__":
-    start = time.time()
+    base_instruction =  "Write a short poem"
+    dria = Dria(num_nodes=5, base_instruction=base_instruction)
+    dria.run()
 
-    BASE_INSTRUCTION = "Write a random tweet."
-    NUM_NODES = 8
-    dria = Dria(num_nodes=NUM_NODES, base_instruction=BASE_INSTRUCTION)
-    dria.guided_generation()
-    data = dria.data
-    print(data)
-
-    end = time.time()
-    print(end - start)
+    for instruction in dria.data:
+        print(instruction)

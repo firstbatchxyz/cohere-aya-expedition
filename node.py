@@ -2,6 +2,8 @@ import torch, torch.nn.functional as F
 from transformers import AutoModelForCausalLM, AutoTokenizer
 from typing import List
 
+from transformers.models.auto.modeling_auto import AutoModelForDocumentQuestionAnswering
+
 class LLMNode:
     def __init__(self, model, tokenizer, seed: int, node_id: str, end_tokens: List[str] = None):
         self.node_id = node_id
@@ -145,3 +147,41 @@ class LLMNode:
             self.sample_next_token_and_append(current_logits, temperature, top_p)
 
         return self.get_generated_sequence()
+
+
+if __name__ == "__main__":
+    
+    augmentation_prompt = """
+You are an expert in instruction augmentation. Each turn, you are given a base instruction and you respond in an augmented version of that instruction that steers the prompt in a new semantic direction. 
+You should:
+- Only respond with the augmented instruction, nothing else
+- Make sure the new prompt is different enough
+
+    """
+
+    classify_prompt = """
+    You are a domain classifier.  
+    Task: From a (Base instruction) and its (Augmentation), return the most specific sub-domain / concept that describes the Augmented Instruction relative to the Base, with a short sentence.
+
+    Format:  
+    <your label>
+
+    Now classify:  
+    Base: {BASE}  
+    Augmentation: {AUGMENTATION}
+    """
+
+
+    base_model = "microsoft/Phi-4-mini-instruct"
+    tokenizer = AutoTokenizer.from_pretrained(base_model)
+    model = AutoModelForCausalLM.from_pretrained(base_model, torch_dtype="auto", device_map="auto")
+    node = LLMNode(model, tokenizer, seed=50, node_id="bombardino", end_tokens=["<|end|>", "<|endoftext|>"])
+
+
+    pos = "Write down a math question"
+    negs = ["Write a short tweet. Topic:Football"]
+    gen = node.generate(augmentation_prompt + " " + pos, 150, 1.0, 0.9)
+    label = node.generate(classify_prompt.format(BASE=pos, AUGMENTATION=gen), 150, 1.0, 0.9)
+    print(gen, label)
+
+    #node.generate_with_guidance()

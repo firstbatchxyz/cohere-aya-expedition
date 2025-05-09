@@ -1,6 +1,7 @@
 import torch, torch.nn.functional as F
 from transformers import AutoTokenizer, AutoModel
 import numpy as np
+import faiss
 from sklearn.cluster import DBSCAN
 
 
@@ -39,7 +40,7 @@ class VectorDB:
     """Tiny, NumPy-only cosine-similarity DB with E5 instructions."""
     def __init__(self, embedder):
         self.e = embedder
-        self.task = "Given a concept, find the most similar concepts"
+        self.task = "Given an instruction, find the most similar instruction"
         self.vecs = np.empty((0, self.e.model.config.hidden_size), np.float32)
         self.ids, self.texts = [], []
 
@@ -65,15 +66,7 @@ class VectorDB:
     def search(self, query, k=5):
         q = self._qvec(query)
         sims = q @ self.vecs.T
-        
-        # Ensure k doesn't exceed the size of the array
-        k = min(k, len(self.vecs))
-        
-        # If there are no vectors, return empty list
-        if k == 0:
-            return []
-        
-        idx = np.argpartition(-sims, k-1)[:k]
+        idx = np.argpartition(-sims, k)[:k]
         idx = idx[np.argsort(-sims[idx])]
         return [(self.ids[i], self.texts[i], float(sims[i])) for i in idx]
 
@@ -87,8 +80,7 @@ class Controller:
     def similar(self, concept): 
         """ Check if there exists similar concept beyond threshold """
         results = self.vdb.search(concept)
-        if len(results) == 0:
-            return False
+        if not results: return False
         (_, _, similarity) = results[0]
         if similarity > self.threshold:
             return True
