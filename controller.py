@@ -77,7 +77,7 @@ class Controller:
     """Minimal wrapper for controller component of the network"""
     def __init__(self):
         self.vdb = VectorDB(embedder=E5Embedder())
-        self.threshold = 0.82
+        self.threshold = 0.9
     def add_concept(self, concept): self.vdb.add_docs([concept])
 
     def similar(self, concept): 
@@ -87,7 +87,9 @@ class Controller:
         print(results)
         print("--"*10)
         if not results: return False
-        max_sim =  max([similarity for (_, _, similarity) in results])
+        mean_sim =  np.mean([similarity for (_, _, similarity) in results])
+        max_sim = max([similarity for (_, _, similarity) in results])
+        print("---*** ", mean_sim)
         if max_sim < self.threshold:
                 return False
         return True

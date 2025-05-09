@@ -44,6 +44,7 @@ class Dria:
         self.controller = Controller()
         self.max_steps, self.guidance_scale, self.temp, self.top_p = 150, 2.0, 1.0, 0.9
         self.base_instruction = base_instruction
+        self.num_nodes = num_nodes
 
         for _ in range(num_nodes):
             self.nodes.append(LLMNode(self.model, self.tokenizer, 
@@ -58,10 +59,11 @@ class Dria:
             self.controller.add_concept(augmentation)
 
     def guided_generation(self):
-        negative_instructions = self.controller.select()
-        print("selected negatives ", negative_instructions)
 
         for node in tqdm(self.nodes, desc="Guided generation"):
+            negative_instructions = self.controller.select(self.num_nodes-2, self.num_nodes) # just an heuristic
+            print("selected negatives ", negative_instructions)
+
             node.set_seed()
             guidance_scale = 1.0; iterations = 0;
 
