@@ -98,15 +98,16 @@ class Dria:
 
         return generations
 
-    def generate_based_on_guided(self):
-        self.guided_generation()
+    def generate_based_on_guided(self, runs=2):
+        for _ in range(runs):
+            self.guided_generation()
 
         generations = []
         instructions = self.data
         
         # Disperse each instruction into a node in self.nodes
         for i, instruction in enumerate(instructions):
-            node = self.nodes[i]
+            node = self.nodes[i % len(self.nodes)]
             node.set_seed()
             generation = node.generate(instruction, self.max_steps)
             generations.append(generation) # store generated data
