@@ -10,7 +10,7 @@ from trl import SFTTrainer
 def load_model(model_path, lora_path=None):
 
     model = AutoModelForCausalLM.from_pretrained(
-        model_path, device_map="auto", trust_remote_code=True, load_in_4bit=True
+        model_path, device_map="auto", trust_remote_code=True, load_in_4bit=False
     )
 
     tokenizer = AutoTokenizer.from_pretrained(model_path)
@@ -28,9 +28,9 @@ def train(model_path, dataset, name):
     model, tokenizer = load_model(model_path)
 
     peft_config = LoraConfig(
-        lora_alpha=16,
+        lora_alpha=64,
         lora_dropout=0.05,
-        r=8,
+        r=32,
         bias="none",
         task_type="CAUSAL_LM",
         target_modules=["q_proj", "k_proj", "v_proj", "o_proj"],
