@@ -4,7 +4,7 @@ import torch # Added for type checking
 
 # Define constants
 PCA_DIMENSIONS = 4
- 
+
 def compute_diversity(embeddings):
     if isinstance(embeddings, torch.Tensor):
         embeddings_np = embeddings.cpu().numpy()
