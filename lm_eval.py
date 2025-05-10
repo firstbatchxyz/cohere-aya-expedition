@@ -16,5 +16,3 @@ def evaluate_model(model_path, peft_path=None, task=None):
         --tasks {task}"
 
     subprocess.run(run_command, shell=True)
-
-    

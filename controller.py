@@ -8,7 +8,9 @@ from sklearn.cluster import DBSCAN
 class E5Embedder:
     """Minimal wrapper for intfloat/multilingual-e5-large-instruct."""
 
-    def __init__(self, model_name="intfloat/multilingual-e5-large-instruct", device=None):
+    def __init__(
+        self, model_name="intfloat/multilingual-e5-large-instruct", device=None
+    ):
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.tok = AutoTokenizer.from_pretrained(model_name)
         self.model = AutoModel.from_pretrained(model_name).to(self.device).eval()
@@ -19,25 +21,32 @@ class E5Embedder:
 
     @staticmethod
     def _avg_pool(h: torch.Tensor, m: torch.Tensor) -> torch.Tensor:
-        h = h.masked_fill(~m[..., None].bool(), 0.0) # ~ is the bitwise not op
+        h = h.masked_fill(~m[..., None].bool(), 0.0)  # ~ is the bitwise not op
         return h.sum(1) / m.sum(1, keepdim=True)
 
     def encode(self, texts, max_len=512, batch_size=32):
         embs = []
         with torch.no_grad():
             for i in range(0, len(texts), batch_size):
-                t = self.tok(texts[i:i + batch_size], padding=True,
-                             truncation=True, max_length=max_len,
-                             return_tensors="pt").to(self.device)
+                t = self.tok(
+                    texts[i : i + batch_size],
+                    padding=True,
+                    truncation=True,
+                    max_length=max_len,
+                    return_tensors="pt",
+                ).to(self.device)
                 h = self.model(**t).last_hidden_state
                 e = F.normalize(self._avg_pool(h, t["attention_mask"]), p=2, dim=1)
                 embs.append(e.cpu())
         return torch.cat(embs)
-        
+
+
 import numpy as np
+
 
 class VectorDB:
     """Tiny, NumPy-only cosine-similarity DB with E5 instructions."""
+
     def __init__(self, embedder):
         self.e = embedder
         self.task = "Given an instruction, find the most similar instruction"
@@ -68,27 +77,32 @@ class VectorDB:
         sims = q @ self.vecs.T
         n = len(sims)
         k = min(k, n)
-        idx = np.argpartition(-sims, k-1)[:k]
+        idx = np.argpartition(-sims, k - 1)[:k]
         idx = idx[np.argsort(-sims[idx])]
         return [(self.ids[i], self.texts[i], float(sims[i])) for i in idx]
 
+
 class Controller:
     """Minimal wrapper for controller component of the network"""
+
     def __init__(self):
         self.vdb = VectorDB(embedder=E5Embedder())
         self.threshold = 0.9
-    def add_concept(self, concept): self.vdb.add_docs([concept])
 
-    def similar(self, concept): 
-        """ Check if there exists similar concept beyond threshold """
+    def add_concept(self, concept):
+        self.vdb.add_docs([concept])
+
+    def similar(self, concept):
+        """Check if there exists similar concept beyond threshold"""
         results = self.vdb.search(concept)
-        if not results: return False
+        if not results:
+            return False
         sims = [similarity for (_, _, similarity) in results]
-        mean_sim =  np.mean(sims)
+        mean_sim = np.mean(sims)
         max_sim = max(sims)
         print("---** mean: ", mean_sim, " max: ", max_sim, " sims: ", sims)
         if max_sim < self.threshold:
-                return False
+            return False
         return True
 
     def select(self, k=5, knn=10):
@@ -99,10 +113,10 @@ class Controller:
         sims = V @ V.T
         np.fill_diagonal(sims, -1)
 
-        D = 1 - np.sort(sims, axis=1)[:, -min(knn, V.shape[0]-1):]
+        D = 1 - np.sort(sims, axis=1)[:, -min(knn, V.shape[0] - 1) :]
         density = 1 / (D.mean(1) + 1e-9)
 
-        m = min(k, len(density))          # ≤ available points
-        top = np.argpartition(-density, m-1)[:m]
+        m = min(k, len(density))  # ≤ available points
+        top = np.argpartition(-density, m - 1)[:m]
         top = top[np.argsort(-density[top])]
         return [self.vdb.texts[i] for i in top]

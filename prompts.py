@@ -1,4 +1,3 @@
-
 def get_prompt(name):
     if name == "aug":
         return augmentation_prompt_v1
@@ -8,6 +7,7 @@ def get_prompt(name):
         return classify_prompt
     elif name == "quality":
         return quality_prompt
+
 
 augmentation_prompt_v1 = """
 You are an expert in instruction augmentation. Each turn, you are given a base instruction and you respond in an augmented version of that instruction that steers the prompt in a new semantic direction. 
