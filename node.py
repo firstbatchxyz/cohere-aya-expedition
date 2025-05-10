@@ -7,7 +7,6 @@ from transformers.models.auto.modeling_auto import AutoModelForDocumentQuestionA
 class LLMNode:
     def __init__(self, model, tokenizer, seed: int, node_id: str, end_tokens: List[str] = None):
         self.node_id = node_id
-        self.seed = seed
         torch.manual_seed(seed)
         if torch.cuda.is_available():
             torch.cuda.manual_seed_all(seed)
@@ -22,11 +21,6 @@ class LLMNode:
                     self.stop_ids.add(tid)
 
     def is_ready(self): return self.model is not None
-
-    def set_seed(self):
-        torch.manual_seed(self.seed)
-        if torch.cuda.is_available():
-            torch.cuda.manual_seed_all(self.seed)
 
     def _tokenize_prompt(self, prompt: str):
         txt = self.tokenizer.apply_chat_template([{"role": "user", "content": prompt}],
