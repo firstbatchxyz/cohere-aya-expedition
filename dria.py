@@ -36,16 +36,17 @@ class Dria:
 
     def guided_generation(self):
         augmentation_prompt = get_prompt("aug_v2")
-        negative_instructions = self.controller.select(k=5)
+        negative_instructions = self.controller.select(k=3, knn=5)
 
         for node in tqdm(self.nodes, desc="Guided generation"):
-            guidance_scale = 2.0; iterations = 0;
+            guidance_scale = 1.0; iterations = 0;
 
             augmentation = node.generate_with_guidance(augmentation_prompt + self.base_instruction, negative_instructions, 150, guidance_scale, 1.0, 0.9)
             #label = node.generate(fill_prompt(self.base_instruction, generation), self.max_steps)
 
             while self.controller.similar(augmentation) and iterations < 5:
-                augmentation = node.generate_with_guidance(augmentation_prompt + self.base_instruction, negative_instructions, 150, guidance_scale + 0.5, 1.0, 0.9)
+                guidance_scale += 0.5
+                augmentation = node.generate_with_guidance(augmentation_prompt + self.base_instruction, negative_instructions, 150, guidance_scale, 1.0, 0.9)
                 #label = node.generate(fill_prompt(self.base_instruction, generation), self.max_steps)
                 iterations += 1
             
