@@ -84,9 +84,9 @@ class Controller:
         results = self.vdb.search(concept)
         if not results: return False
         sims = [similarity for (_, _, similarity) in results]
-        #mean_sim =  np.mean(sims)
+        mean_sim =  np.mean(sims)
         max_sim = max(sims)
-        #print("---** mean: ", mean_sim, " max: ", max_sim, " sims: ", sims)
+        print("---** mean: ", mean_sim, " max: ", max_sim, " sims: ", sims)
         if max_sim < self.threshold:
                 return False
         return True
