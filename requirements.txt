@@ -1,0 +1,8 @@
+transformers
+datasets
+accelerate
+faiss-cpu
+peft
+trl
+bitsandbytes
+accelerate
