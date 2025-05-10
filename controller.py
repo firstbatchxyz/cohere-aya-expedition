@@ -76,7 +76,7 @@ class Controller:
     """Minimal wrapper for controller component of the network"""
     def __init__(self):
         self.vdb = VectorDB(embedder=E5Embedder())
-        self.threshold = 0.8
+        self.threshold = 0.9
     def add_concept(self, concept): self.vdb.add_docs([concept])
 
     def similar(self, concept): 
