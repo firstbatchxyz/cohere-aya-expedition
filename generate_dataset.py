@@ -28,9 +28,10 @@ def generate_dria_dataset(base_instruction, num_nodes, iters, out):
     return dria
 
 
-def generate_bl_dataset(base_instruction, num, out):
-    dria = Dria(num_nodes=num, base_instruction=base_instruction)
-    dria.bootstrap()
+def generate_bl_dataset(base_instruction, num_nodes, iters, out):
+    dria = Dria(num_nodes=num_nodes, base_instruction=base_instruction)
+    for _ in range(iters):
+        dria.dria.bootstrap()
 
     for instruction in dria.data:
         print(instruction)
