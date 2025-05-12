@@ -150,7 +150,7 @@ class LLMNode:
                     all_negative_logits = torch.stack(
                         logits_negative_conds, dim=0
                     )  # Stack on CPU
-                    ln = torch.min(all_negative_logits, dim=0).values  # Min on CPU
+                    ln = torch.min(all_negative_logits, dim=0).values
 
                     # Guidance calculation (all tensors lp, ln are on CPU here)
                     guided_logits = ln + guidance_scale * (lp - ln)
